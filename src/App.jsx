@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, Droplets, Thermometer, Wifi, Clock, Sparkles } from "lucide-react";
+import { Activity, AlertTriangle, Bell, Droplets, Thermometer, Wifi, Clock, Sparkles } from "lucide-react";
 import Chart from "react-apexcharts";
 
 const DEFAULT_CHANNEL_ID = "3281642";
 const DEFAULT_REFRESH_SEC = 15;
 const MAX_RESULTS = 30;
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const HR_HIGH_THRESHOLD = 100;    // BPM — tachycardia
+const TEMP_HIGH_THRESHOLD = 37.5; // °C — fever
 const READ_KEY_REGEX = /^[A-Za-z0-9]{16}$/;
 const STORAGE_KEYS = {
   channelId: "aarga.thingspeak.channelId",
@@ -67,16 +69,32 @@ const Pill = ({ children, tone = "slate" }) => {
   );
 };
 
-const MetricCard = ({ title, value, unit, subtitle, icon, progressColor, percent }) => (
-  <article className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-    <div className={`absolute inset-x-0 top-0 h-1 ${progressColor}`} />
+const AlertBanner = ({ type, message, Icon }) => {
+  const styles = {
+    rose: "bg-rose-50 border-rose-400 text-rose-800",
+    orange: "bg-orange-50 border-orange-400 text-orange-800",
+  };
+  return (
+    <div className={`flex items-center gap-3 rounded-2xl border-2 px-5 py-4 ${styles[type]}`} role="alert">
+      <span className="shrink-0 animate-pulse">
+        <AlertTriangle size={20} />
+      </span>
+      <p className="text-sm font-bold flex-1">{message}</p>
+      <Bell size={16} className="shrink-0 opacity-60" />
+    </div>
+  );
+};
+
+const MetricCard = ({ title, value, unit, subtitle, icon, progressColor, percent, alert }) => (
+  <article className={`relative overflow-hidden rounded-2xl border shadow-sm p-6 transition-colors ${alert ? "border-rose-400 bg-rose-50" : "border-slate-200 bg-white"}`}>
+    <div className={`absolute inset-x-0 top-0 h-1 ${alert ? "bg-rose-500" : progressColor}`} />
     <div className="flex items-start justify-between">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{title}</p>
         <p className="mt-4 text-4xl font-black tracking-tight text-slate-900">{value}</p>
         <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-500">{unit}</p>
       </div>
-      <div className="h-11 w-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg">
+      <div className={`h-11 w-11 rounded-2xl text-white flex items-center justify-center shadow-lg ${alert ? "bg-rose-600" : "bg-slate-900"}`}>
         {icon}
       </div>
     </div>
@@ -84,7 +102,7 @@ const MetricCard = ({ title, value, unit, subtitle, icon, progressColor, percent
     <div className="mt-5">
       <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
         <div
-          className={`h-full rounded-full ${progressColor}`}
+          className={`h-full rounded-full ${alert ? "bg-rose-500" : progressColor}`}
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
         />
       </div>
@@ -227,6 +245,26 @@ const App = () => {
   const latestSpo2 = spo2SeriesData[spo2SeriesData.length - 1] ?? 0;
   const latestHr = hrSeriesData[hrSeriesData.length - 1] ?? 0;
   const latestTemp = tempSeriesData[tempSeriesData.length - 1] ?? null;
+
+  const activeAlerts = [];
+  if (isConnected && feeds.length > 0) {
+    if (latestHr > HR_HIGH_THRESHOLD) {
+      activeAlerts.push({
+        id: "hr",
+        type: "rose",
+        message: `High Heart Rate: ${latestHr.toFixed(0)} BPM — exceeds safe limit of ${HR_HIGH_THRESHOLD} BPM`,
+        Icon: Activity,
+      });
+    }
+    if (latestTemp !== null && latestTemp > TEMP_HIGH_THRESHOLD) {
+      activeAlerts.push({
+        id: "temp",
+        type: "orange",
+        message: `High Temperature: ${latestTemp.toFixed(1)}°C — exceeds safe limit of ${TEMP_HIGH_THRESHOLD}°C`,
+        Icon: Thermometer,
+      });
+    }
+  }
 
   const categories = feeds.map((feed) =>
     new Date(feed.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -395,6 +433,14 @@ const App = () => {
           {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
         </section>
 
+        {activeAlerts.length > 0 && (
+          <div className="space-y-3">
+            {activeAlerts.map((al) => (
+              <AlertBanner key={al.id} {...al} />
+            ))}
+          </div>
+        )}
+
         <main className="grid grid-cols-1 xl:grid-cols-12 gap-7">
           <section className="xl:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-6">
             <MetricCard
@@ -414,6 +460,7 @@ const App = () => {
               icon={<Activity size={20} />}
               progressColor="bg-slate-700"
               percent={(latestHr / 180) * 100}
+              alert={isConnected && feeds.length > 0 && latestHr > HR_HIGH_THRESHOLD}
             />
             <MetricCard
               title="Body Temperature"
@@ -423,6 +470,7 @@ const App = () => {
               icon={<Thermometer size={20} />}
               progressColor="bg-emerald-500"
               percent={latestTemp === null ? 0 : (latestTemp / 45) * 100}
+              alert={isConnected && feeds.length > 0 && latestTemp !== null && latestTemp > TEMP_HIGH_THRESHOLD}
             />
           </section>
 
