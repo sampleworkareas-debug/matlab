@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "api": "node server/index.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -13,7 +12,6 @@
   "dependencies": {
     "apexcharts": "^5.8.1",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
     "lucide-react": "^0.575.0",
     "react": "^19.2.0",
     "react-apexcharts": "^2.0.1",

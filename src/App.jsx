@@ -115,6 +115,7 @@ const App = () => {
 
   const [activeChannelId, setActiveChannelId] = useState(channelIdInput);
   const [activeRefreshSec, setActiveRefreshSec] = useState(refreshSecInput);
+  const [activeReadApiKey, setActiveReadApiKey] = useState("");
   const [isConnected, setIsConnected] = useState(false);
 
   const [feeds, setFeeds] = useState([]);
@@ -129,7 +130,7 @@ const App = () => {
 
     const fetchData = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/feeds?results=${MAX_RESULTS}`);
+        const res = await fetch(`${API_BASE}/api/feeds?results=${MAX_RESULTS}&channelId=${encodeURIComponent(activeChannelId)}&readApiKey=${encodeURIComponent(activeReadApiKey)}`);
         if (!res.ok) {
           throw new Error("ThingSpeak request failed");
         }
@@ -140,7 +141,7 @@ const App = () => {
         setError("");
       } catch (error) {
         setConnectionStatus("Connection Failed");
-        setError("Unable to fetch data. Ensure backend is running: npm run api, and frontend via npm run dev.");
+        setError("Unable to fetch data. Check your connection or Vercel deployment configuration.");
         console.error(error);
       } finally {
         setLoading(false);
@@ -151,7 +152,7 @@ const App = () => {
     const safeRefresh = Math.max(5, Number(activeRefreshSec) || DEFAULT_REFRESH_SEC);
     const interval = setInterval(fetchData, safeRefresh * 1000);
     return () => clearInterval(interval);
-  }, [activeChannelId, activeRefreshSec, isConnected]);
+  }, [activeChannelId, activeRefreshSec, isConnected, activeReadApiKey]);
 
   const handleConnect = () => {
     const nextChannel = channelIdInput.trim();
@@ -201,11 +202,12 @@ const App = () => {
 
         setActiveChannelId(nextChannel);
         setActiveRefreshSec(nextRefresh);
+        setActiveReadApiKey(nextKey);
         setIsConnected(true);
         setError("");
       } catch (requestError) {
         setConnectionStatus("Connection Failed");
-        setError("Cannot reach the backend server. Start it with: npm run api");
+        setError("Cannot reach the API. Check your Vercel deployment or run vercel dev locally.");
         setLoading(false);
         setIsConnected(false);
       }
