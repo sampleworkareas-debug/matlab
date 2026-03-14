@@ -157,6 +157,15 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState("Not Connected");
   const [error, setError] = useState("");
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!isConnected) {
@@ -438,7 +447,7 @@ const App = () => {
             </Pill>
             <Pill>
               <Clock size={14} />
-              {new Date().toLocaleTimeString()}
+              {currentTime.toLocaleTimeString()}
             </Pill>
             <Pill tone="indigo">
               <Wifi size={14} />
