@@ -3,7 +3,7 @@ import { Activity, AlertTriangle, Bell, Droplets, Thermometer, Wifi, Clock, Spar
 import Chart from "react-apexcharts";
 
 const DEFAULT_CHANNEL_ID = "3281642";
-const DEFAULT_REFRESH_SEC = 15;
+const DEFAULT_REFRESH_SEC = 1;
 const MAX_RESULTS = 30;
 const DEFAULT_READ_API_KEY = "L3VW2XW8YKLYXPM1";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
@@ -63,14 +63,13 @@ const sanitizeSeries = (values, min, max) => {
   });
 };
 
-const smoothSeries = (values, windowSize = 3) => {
-  return values.map((_, index) => {
-    const start = Math.max(0, index - (windowSize - 1));
-    const window = values.slice(start, index + 1).filter((value) => Number.isFinite(value));
-    if (!window.length) return null;
-    const sum = window.reduce((total, value) => total + value, 0);
-    return Number((sum / window.length).toFixed(2));
-  });
+const getLatestValid = (values, fallback = null) => {
+  for (let index = values.length - 1; index >= 0; index -= 1) {
+    if (Number.isFinite(values[index])) {
+      return values[index];
+    }
+  }
+  return fallback;
 };
 
 const Pill = ({ children, tone = "slate" }) => {
@@ -185,7 +184,7 @@ const App = () => {
     };
 
     fetchData();
-    const safeRefresh = Math.max(5, Number(activeRefreshSec) || DEFAULT_REFRESH_SEC);
+    const safeRefresh = Math.max(1, Number(activeRefreshSec) || DEFAULT_REFRESH_SEC);
     const interval = setInterval(fetchData, safeRefresh * 1000);
     return () => clearInterval(interval);
   }, [activeChannelId, activeRefreshSec, isConnected, activeReadApiKey]);
@@ -193,7 +192,7 @@ const App = () => {
   const handleConnect = () => {
     const nextChannel = channelIdInput.trim();
     const nextKey = readApiKeyInput.trim();
-    const nextRefresh = Math.max(5, Number(refreshSecInput) || DEFAULT_REFRESH_SEC);
+    const nextRefresh = Math.max(1, Number(refreshSecInput) || DEFAULT_REFRESH_SEC);
 
     if (!nextChannel) {
       setConnectionStatus("Channel ID required");
@@ -257,13 +256,13 @@ const App = () => {
   const rawHr = feeds.map((feed) => toNumOrNull(feed.field2));
   const rawTemp = feeds.map((feed) => normalizeTemperature(feed.field3));
 
-  const spo2SeriesData = smoothSeries(sanitizeSeries(rawSpo2, 60, 100), 3);
-  const hrSeriesData = smoothSeries(sanitizeSeries(rawHr, 35, 220), 3);
-  const tempSeriesData = smoothSeries(sanitizeSeries(rawTemp, 20, 50), 3);
+  const spo2SeriesData = sanitizeSeries(rawSpo2, 60, 100);
+  const hrSeriesData = sanitizeSeries(rawHr, 35, 220);
+  const tempSeriesData = sanitizeSeries(rawTemp, 20, 50);
 
-  const latestSpo2 = spo2SeriesData[spo2SeriesData.length - 1] ?? 0;
-  const latestHr = hrSeriesData[hrSeriesData.length - 1] ?? 0;
-  const latestTemp = tempSeriesData[tempSeriesData.length - 1] ?? null;
+  const latestSpo2 = getLatestValid(spo2SeriesData, 0);
+  const latestHr = getLatestValid(hrSeriesData, 0);
+  const latestTemp = getLatestValid(tempSeriesData, null);
 
   const activeAlerts = [];
   if (isConnected && feeds.length > 0) {
@@ -286,7 +285,7 @@ const App = () => {
   }
 
   const categories = feeds.map((feed) =>
-    new Date(feed.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    new Date(feed.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   );
 
   const baseChartOptions = useMemo(
@@ -345,7 +344,12 @@ const App = () => {
         borderColor: "#e2e8f0",
         strokeDashArray: 4,
       },
-      tooltip: { theme: "light" },
+      tooltip: {
+        theme: "light",
+        x: {
+          format: "HH:mm:ss",
+        },
+      },
     }),
     [categories]
   );
@@ -464,7 +468,7 @@ const App = () => {
             <input
               className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
               type="number"
-              min={5}
+              min={1}
               placeholder="Refresh Seconds"
               value={refreshSecInput}
               onChange={(event) => setRefreshSecInput(event.target.value)}
@@ -493,7 +497,7 @@ const App = () => {
               title="SpO2"
               value={`${latestSpo2.toFixed(0)}%`}
               unit="Oxygen Saturation"
-              subtitle="Filtered + smoothed from Field 1"
+              subtitle="Live reading from Field 1"
               icon={<Droplets size={20} />}
               progressColor="bg-indigo-500"
               percent={latestSpo2}
@@ -502,7 +506,7 @@ const App = () => {
               title="Heart Rate"
               value={`${latestHr.toFixed(0)}`}
               unit="BPM"
-              subtitle="Filtered + smoothed from Field 2"
+              subtitle="Live reading from Field 2"
               icon={<Activity size={20} />}
               progressColor="bg-slate-700"
               percent={(latestHr / 180) * 100}
@@ -512,7 +516,7 @@ const App = () => {
               title="Body Temperature"
               value={latestTemp === null ? "--" : `${latestTemp.toFixed(1)}°`}
               unit="Celsius"
-              subtitle="MATLAB converted + smoothed Field 3"
+              subtitle="Live reading from Field 3"
               icon={<Thermometer size={20} />}
               progressColor="bg-emerald-500"
               percent={latestTemp === null ? 0 : (latestTemp / 45) * 100}
