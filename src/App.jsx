@@ -24,6 +24,22 @@ const convertTemp = (adc) => {
   return Number.isFinite(temp) ? Number(temp.toFixed(1)) : null;
 };
 
+const normalizeTemperature = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+
+  if (parsed >= 20 && parsed <= 50) {
+    return Number(parsed.toFixed(1));
+  }
+
+  const converted = convertTemp(parsed);
+  if (converted !== null && converted >= 20 && converted <= 50) {
+    return converted;
+  }
+
+  return null;
+};
+
 const toNum = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -236,7 +252,7 @@ const App = () => {
 
   const rawSpo2 = feeds.map((feed) => toNumOrNull(feed.field1));
   const rawHr = feeds.map((feed) => toNumOrNull(feed.field2));
-  const rawTemp = feeds.map((feed) => convertTemp(Number(feed.field3)));
+  const rawTemp = feeds.map((feed) => normalizeTemperature(feed.field3));
 
   const spo2SeriesData = smoothSeries(sanitizeSeries(rawSpo2, 60, 100), 3);
   const hrSeriesData = smoothSeries(sanitizeSeries(rawHr, 35, 220), 3);
@@ -280,12 +296,18 @@ const App = () => {
       },
       dataLabels: { enabled: false },
       stroke: { curve: "smooth", width: 3 },
+      markers: {
+        size: 0,
+        hover: {
+          sizeOffset: 3,
+        },
+      },
       fill: {
         type: "gradient",
         gradient: {
           shadeIntensity: 1,
-          opacityFrom: 0.18,
-          opacityTo: 0.03,
+          opacityFrom: 0.08,
+          opacityTo: 0.01,
           stops: [0, 90, 100],
         },
       },
@@ -365,9 +387,16 @@ const App = () => {
 
   const combinedOptions = {
     ...baseChartOptions,
-    colors: ["#4f46e5", "#334155", "#10b981"],
-    stroke: { curve: "smooth", width: 2 },
-    fill: { ...baseChartOptions.fill, opacity: 0.1 },
+    colors: ["#111827", "#111827", "#111827"],
+    stroke: { curve: "smooth", width: 4 },
+    fill: {
+      ...baseChartOptions.fill,
+      gradient: {
+        ...baseChartOptions.fill.gradient,
+        opacityFrom: 0.04,
+        opacityTo: 0.01,
+      },
+    },
     legend: { show: true, position: "top" },
   };
 
