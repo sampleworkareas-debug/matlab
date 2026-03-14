@@ -5,12 +5,14 @@ import Chart from "react-apexcharts";
 const DEFAULT_CHANNEL_ID = "3281642";
 const DEFAULT_REFRESH_SEC = 15;
 const MAX_RESULTS = 30;
+const DEFAULT_READ_API_KEY = "L3VW2XW8YKLYXPM1";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const HR_HIGH_THRESHOLD = 100;    // BPM — tachycardia
 const TEMP_HIGH_THRESHOLD = 37.5; // °C — fever
 const READ_KEY_REGEX = /^[A-Za-z0-9]{16}$/;
 const STORAGE_KEYS = {
   channelId: "aarga.thingspeak.channelId",
+  readApiKey: "aarga.thingspeak.readApiKey",
   refreshSec: "aarga.thingspeak.refreshSec",
 };
 
@@ -144,12 +146,12 @@ const TrendCard = ({ title, subTitle, options, series, type = "area", height = 2
 
 const App = () => {
   const [channelIdInput, setChannelIdInput] = useState(() => localStorage.getItem(STORAGE_KEYS.channelId) || DEFAULT_CHANNEL_ID);
-  const [readApiKeyInput, setReadApiKeyInput] = useState("");
+  const [readApiKeyInput, setReadApiKeyInput] = useState(() => localStorage.getItem(STORAGE_KEYS.readApiKey) || DEFAULT_READ_API_KEY);
   const [refreshSecInput, setRefreshSecInput] = useState(() => Number(localStorage.getItem(STORAGE_KEYS.refreshSec) || DEFAULT_REFRESH_SEC));
 
   const [activeChannelId, setActiveChannelId] = useState(channelIdInput);
   const [activeRefreshSec, setActiveRefreshSec] = useState(refreshSecInput);
-  const [activeReadApiKey, setActiveReadApiKey] = useState("");
+  const [activeReadApiKey, setActiveReadApiKey] = useState(() => localStorage.getItem(STORAGE_KEYS.readApiKey) || DEFAULT_READ_API_KEY);
   const [isConnected, setIsConnected] = useState(false);
 
   const [feeds, setFeeds] = useState([]);
@@ -232,6 +234,7 @@ const App = () => {
         }
 
         localStorage.setItem(STORAGE_KEYS.channelId, nextChannel);
+        localStorage.setItem(STORAGE_KEYS.readApiKey, nextKey);
         localStorage.setItem(STORAGE_KEYS.refreshSec, String(nextRefresh));
 
         setActiveChannelId(nextChannel);
@@ -293,11 +296,21 @@ const App = () => {
         zoom: { enabled: false },
         background: "transparent",
         animations: { enabled: false },
+        dropShadow: {
+          enabled: true,
+          color: "#111827",
+          top: 1,
+          left: 0,
+          blur: 1,
+          opacity: 0.16,
+        },
       },
       dataLabels: { enabled: false },
-      stroke: { curve: "smooth", width: 3 },
+      stroke: { curve: "smooth", lineCap: "round", width: 4, colors: ["#111827"] },
       markers: {
-        size: 0,
+        size: 2,
+        strokeColors: "#111827",
+        fillColors: ["#111827"],
         hover: {
           sizeOffset: 3,
         },
@@ -368,7 +381,7 @@ const App = () => {
     ...baseChartOptions,
     colors: ["#111827"],
     stroke: { ...baseChartOptions.stroke, width: 4 },
-    yaxis: { ...baseChartOptions.yaxis, max: 100 },
+    yaxis: { ...baseChartOptions.yaxis, min: 94, max: 100 },
   };
 
   const hrOptions = {
@@ -382,13 +395,13 @@ const App = () => {
     ...baseChartOptions,
     colors: ["#111827"],
     stroke: { ...baseChartOptions.stroke, width: 4 },
-    yaxis: { ...baseChartOptions.yaxis, max: 50 },
+    yaxis: { ...baseChartOptions.yaxis, min: 30, max: 45 },
   };
 
   const combinedOptions = {
     ...baseChartOptions,
     colors: ["#111827", "#111827", "#111827"],
-    stroke: { curve: "smooth", width: 4 },
+    stroke: { curve: "smooth", lineCap: "round", width: 4, colors: ["#111827"] },
     fill: {
       ...baseChartOptions.fill,
       gradient: {
@@ -397,6 +410,7 @@ const App = () => {
         opacityTo: 0.01,
       },
     },
+    yaxis: { ...baseChartOptions.yaxis, min: 30, max: 100 },
     legend: { show: true, position: "top" },
   };
 
@@ -536,7 +550,7 @@ const App = () => {
               subTitle="Last 20 feeds • Field 1"
               options={spo2Options}
               series={spo2Series}
-              type="line"
+              type="area"
               height={240}
             />
             <TrendCard
@@ -552,7 +566,7 @@ const App = () => {
               subTitle="Last 20 feeds • Field 3 (MATLAB converted)"
               options={tempOptions}
               series={tempSeries}
-              type="line"
+              type="area"
               height={240}
             />
             <TrendCard
@@ -560,7 +574,7 @@ const App = () => {
               subTitle="SpO2 + BPM + Temp"
               options={combinedOptions}
               series={combinedSeries}
-              type="line"
+              type="area"
               height={240}
             />
           </section>
