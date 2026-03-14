@@ -344,19 +344,22 @@ const App = () => {
 
   const spo2Options = {
     ...baseChartOptions,
-    colors: ["#4f46e5"],
+    colors: ["#111827"],
+    stroke: { ...baseChartOptions.stroke, width: 4 },
     yaxis: { ...baseChartOptions.yaxis, max: 100 },
   };
 
   const hrOptions = {
     ...baseChartOptions,
-    colors: ["#334155"],
+    colors: ["#111827"],
+    stroke: { ...baseChartOptions.stroke, width: 4 },
     yaxis: { ...baseChartOptions.yaxis, max: 200 },
   };
 
   const tempOptions = {
     ...baseChartOptions,
-    colors: ["#10b981"],
+    colors: ["#111827"],
+    stroke: { ...baseChartOptions.stroke, width: 4 },
     yaxis: { ...baseChartOptions.yaxis, max: 50 },
   };
 
